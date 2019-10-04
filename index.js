@@ -18,7 +18,7 @@ const query = pgClient.query('LISTEN new_order')
 
 // this is the path to the r text mining cript. It's more or less
 // hardcoded here but could be a cmdline arg in a more elaborate setup
-const rscript_update_dc = path.resolve("update_states", "update_dc.R");
+const rscript_update_dc = path.resolve("update.states/R", "runner.R");
 
 const callR = (path, rargs) => {
     return new Promise((resolve, reject) => {
@@ -27,7 +27,7 @@ const callR = (path, rargs) => {
             [
                 path, "--args", rargs
             ], {
-                cwd: "C:\\temp\\nodeapps\\wsdot_evse_sim_manager\\update_states"
+                cwd: "C:\\temp\\nodeapps\\wsdot_evse_sim_manager\\update.states"
             });
         child.stderr.on("data", (data) => {
             console.log(data.toString());
