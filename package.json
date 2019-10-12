@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/chintanp/wsdot_evse_sim_manager#readme",
   "dependencies": {
+    "bee-queue": "^1.2.2",
     "bull": "^3.11.0",
     "dotenv": "^8.1.0",
     "pg": "^7.12.1",

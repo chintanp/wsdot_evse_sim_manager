@@ -9,6 +9,8 @@ const pg = require('pg');
 const path = require('path');
 const spawn = require("child_process").spawn;
 const connectionString = `postgres://${process.env.DB_USER}:${process.env.DB_PWD}@${process.env.DB_HOST}:5432/wsdot_evse_main`;
+const Queue = require('bee-queue');
+const queue = new Queue('evse_processes');
 
 console.log(connectionString)
 
@@ -18,7 +20,7 @@ const query = pgClient.query('LISTEN new_order')
 
 // this is the path to the r text mining cript. It's more or less
 // hardcoded here but could be a cmdline arg in a more elaborate setup
-const rscript_update_dc = path.resolve("update.states/R", "runner.R");
+const rscript_update_dc = path.resolve("update_states/R", "runner.R");
 
 const callR = (path, rargs) => {
     return new Promise((resolve, reject) => {
@@ -27,7 +29,7 @@ const callR = (path, rargs) => {
             [
                 path, "--args", rargs
             ], {
-                cwd: "C:\\temp\\nodeapps\\wsdot_evse_sim_manager\\update.states"
+                cwd: "C:\\temp\\nodeapps\\wsdot_evse_sim_manager\\update_states"
             });
         child.stderr.on("data", (data) => {
             console.log(data.toString());
@@ -57,12 +59,38 @@ pgClient.on('notification', async (data) => {
     if (status == 'inserted') {
         console.log("Row inserted successfully - begin the process")
         console.log("Invoking R script... at:", rscript_update_dc);
-        callR(rscript_update_dc, a_id)
+        // callR(rscript_update_dc, a_id)
+        //     .then(result => {
+        //         console.log("finished with result:", result);
+        //     })
+        //     .catch(error => {
+        //         console.log("Finished with error:", error);
+        //     });
+        const job = queue.createJob({
+            a_id: a_id
+        });
+        console.log("Job created in the queue");
+        job.save();
+        console.log("Job saved in the queue");
+        job.on('succeeded', (result) => {
+            console.log(`Received result for job ${job.id}: ${result}`);
+        });
+    }
+    console.log("Time to process");
+
+
+});
+
+    // Process jobs from as many servers or processes as you like
+    queue.process(function (job, done) {
+        console.log(`Processing job ${job.id}`);
+        callR(rscript_update_dc, job.data.a_id)
             .then(result => {
                 console.log("finished with result:", result);
+                return done(null, job.data.a_id);
             })
             .catch(error => {
                 console.log("Finished with error:", error);
             });
-    }
-})
+        
+    });
