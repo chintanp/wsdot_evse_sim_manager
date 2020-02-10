@@ -67,3 +67,4 @@ update_states/
 .Rproj.user
 update.states
 wsdot_evse_update_states
+logs/
