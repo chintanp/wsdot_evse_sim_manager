@@ -1,36 +1,32 @@
 {
-  "name": "wsdot_evse_sim_manager",
+  "name": "bull-test2",
   "version": "1.0.0",
-  "description": "This node app manages the simulation execution queue",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chintanp/wsdot_evse_sim_manager.git"
+    "url": "git+https://github.com/luisbilecki/bull-queue-example.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/chintanp/wsdot_evse_sim_manager/issues"
+    "url": "https://github.com/luisbilecki/bull-queue-example/issues"
   },
-  "homepage": "https://github.com/chintanp/wsdot_evse_sim_manager#readme",
+  "homepage": "https://github.com/luisbilecki/bull-queue-example#readme",
   "dependencies": {
-    "bee-queue": "^1.2.2",
-    "bull": "^3.11.0",
-    "console-stamp": "^0.2.9",
+    "aws-sdk": "^2.726.0",
+    "bull": "^3.16.0",
+    "bull-board": "^0.9.0",
+    "dockerode": "^3.2.1",
     "dotenv": "^8.2.0",
-    "elastic-apm-node": "^3.2.0",
-    "ip": "^1.1.5",
-    "mailgun-js": "^0.22.0",
-    "nodemon": "^2.0.2",
-    "pg": "^7.12.1",
-    "pg-listen": "^1.5.0",
-    "pgtools": "^0.3.0",
-    "r-script": "0.0.4",
-    "redis": "^2.8.0",
-    "winston": "^3.2.1",
-    "winston-daily-rotate-file": "^4.3.0"
+    "express": "^4.17.1",
+    "nodemailer": "^6.4.11",
+    "pg": "^8.3.0",
+    "pg-listen": "^1.6.0",
+    "winston": "^3.3.3",
+    "winston-daily-rotate-file": "^4.5.0"
   }
 }

@@ -1,0 +1,34 @@
+version: '3'
+services:
+  evidss-redis:
+    image: 'redis:6.0.6'
+    ports:
+      - '6379:6379'
+    networks:
+      - sim-man
+    deploy:
+      resources:
+        limits:
+          memory: 100m
+        reservations:
+          memory: 30m
+  evidss-simman:
+    build: .
+    depends_on:
+      - evidss-redis
+    ports:
+      - '${SIMMAN_PORT}:${SIMMAN_PORT}'
+    networks:
+      - sim-man
+    environment:
+      - REDIS_HOST=$REDIS_HOST
+      - MAIN_USER=$MAIN_USER
+      - MAIN_PWD=$MAIN_PWD
+      - MAIN_HOST=$MAIN_HOST
+      - MAIN_PORT=$MAIN_PORT
+      - MAIN_DB=$MAIN_DB
+    command:
+      - nodemon
+      - index.js
+networks:
+  sim-man: null
