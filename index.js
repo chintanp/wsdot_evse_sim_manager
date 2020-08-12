@@ -1,5 +1,5 @@
 const Queue = require('bull');
-const config = require('./config.js');
+const AWS = require('aws-sdk');
 const nodemailer = require('nodemailer');
 const { setQueues, UI } = require('bull-board');
 const app = require('express')();
@@ -7,7 +7,43 @@ const createSubscriber = require('pg-listen');
 const path = require('path');
 const spawn = require("child_process").spawn;
 const logger = require('./utils/logger');
+const config = require('./config.js');
 
+AWS.config.update({ region: 'us-west-2' });
+const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
+
+const ec2Params = {
+    ImageId: config.ec2.rAmiId, 
+    InstanceType: 't2.small', 
+    KeyName: config.ec2.keyPairName, 
+    MinCount: 1, 
+    MaxCount: 1, 
+    SecurityGroupIds: [
+        config.ec2.securityGroupName
+    ], 
+    UserData: '',
+    TagSpecifications: [
+        {
+            ResourceType: "instance", 
+            Tags: [
+                {
+                    Key: "Name", 
+                    Value: "cp84_evi-dss"
+                }, 
+                {
+                    Key: "Project", 
+                    Value: "cp84"
+                }, 
+                {
+                    Key: "End_date", 
+                    Value: "06-30-2021"
+                }
+            ]
+        }
+    ]
+};
+
+const rEC2InstanceData = '';
 // console.log(JSON.stringify(config));
 
 const pgconfig = {
@@ -43,7 +79,8 @@ const analysisQueue = new Queue('sendMail', {
 setQueues([analysisQueue]);
 
 const data = {
-    a_id: ''
+    a_id: '', 
+    instance_data: ''
 };
 
 const analysisQueueOptions = {
@@ -67,7 +104,34 @@ subscriber.notifications.on('new_order', payload => {
 
 // 3. Consumer 
 analysisQueue.process(async job => {
-    return await callR(rscript_update_dc, job.data.a_id);
+    var userData= `#!/bin/bash
+    echo "Hello World"
+    touch /home/ubuntu/rapps/tripgen/analysis_id
+    echo "${job.data.a_id}" >> /home/ubuntu/rapps/tripgen/analysis_id
+    cd /home/ubuntu/rapps/tripgen 
+    pwd 
+    export R_LIBS_USER=/home/ubuntu/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
+    /usr/bin/Rscript --verbose runner.R
+    `;
+    
+    console.log(userData);
+    
+    // create a buffer
+    const userDataBuff = Buffer.from(userData, 'utf-8');
+    
+    // encode buffer as Base64
+    const userDataEncoded = userDataBuff.toString('base64');
+    ec2Params.UserData = userDataEncoded;
+
+    ec2.runInstances(ec2Params, function(err, data) {
+        if(err) {
+            console.log(err, err.stack);
+        } else {
+            console.log(data);
+            job.data.instance_data = data;
+        }
+    });
+    // return await callR(rscript_update_dc, job.data.a_id);
 });
 
 // 4.1 Completed Event
@@ -84,87 +148,6 @@ analysisQueue.on('error', (error) => {
 analysisQueue.on('failed', (job, err) => {
     console.log(`Job with id ${job.id} has failed with error: ${err}`);
 });
-
-// function sendMail(email) {
-//     return new Promise((resolve, reject) => {
-//         let mailOptions = {
-//             from: 'fromuser@domain.com',
-//             to: email,
-//             subject: 'Bull - npm',
-//             text: "This email is from bull job scheduler tutorial."
-//         };
-
-//         let mailConfig = {
-//             host: 'smtp.ethereal.email',
-//             port: 587,
-//             auth: {
-//                 user: 'mae.hintz@ethereal.email',
-//                 pass: 'RCmtt8JBahY9x2JhGh'
-//             }
-//         };
-
-//         nodemailer.createTransport(mailConfig).sendMail(mailOptions,
-//             (err, info) => {
-//                 if (err) {
-//                     reject(err);
-//                 } else {
-//                     resolve(info);
-//                 }
-//             });
-//     });
-// }
-const callR = (rpath, rargs) => {
-    return new Promise((resolve, reject) => {
-        let err = false;
-
-        var rscript_path = path.join(__dirname, process.env.RSCRIPT_PATH);
-        console.log(rscript_path);
-
-        const child = spawn(process.env.RSCRIPT,
-            [
-                rpath, "--args", rargs
-            ], {
-            cwd: rscript_path
-        });
-
-        child.stderr.on("data", (data) => {
-            console.log(data.toString());
-            // logger.log({
-            //     level: 'error',
-            //     IP: ip.address(),
-            //     message: data.toString()
-            // });
-        });
-
-        child.stdout.on("data", (data) => {
-            console.log(data.toString());
-            // logger.log({
-            //     level: 'info',
-            //     IP: ip.address(),
-            //     message: data.toString()
-            // });
-        });
-
-        child.on('error', (error) => {
-            err = true;
-            reject(error);
-            // logger.log({
-            //     level: 'error',
-            //     IP: ip.address(),
-            //     message: error.toString()
-            // });
-        });
-        child.on('exit', () => {
-            // logger.log({
-            //     level: 'info',
-            //     IP: ip.address(),
-            //     message: "child process exited successfully"
-            // });
-            if (err) return; // debounce - already rejected
-            resolve("done."); // TODO: check exit code and resolve/reject accordingly
-        });
-    });
-}
 
 app.get('/', (req, res) => {
     res.send('Hello World!')

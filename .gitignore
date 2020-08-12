@@ -1,3 +1,4 @@
 node_modules
 .env
 wsdot_evse_update_states/
+logs/

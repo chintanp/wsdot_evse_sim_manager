@@ -9,7 +9,7 @@ const loggerFormat = printf(info => {
 
 const fileTransport = new (transports.DailyRotateFile)({
     dirname: './logs',
-    filename: 'pem-%DATE%.log',
+    filename: 'simman-%DATE%.log',
     datePattern: 'YYYY-MM-DD',
     format: format.combine(
         timestamp(),

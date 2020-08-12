@@ -27,6 +27,11 @@ config = {
     }, 
     app: {
         port: process.env.SIMMAN_PORT || 3000
+    }, 
+    ec2: {
+        securityGroupName: process.env.EC2_SECURITY_GROUPNAME, 
+        keyPairName: process.env.EC2_KEYPAIR_NAME, 
+        rAmiId: process.env.EC_R_AMI_ID
     }
 }
 
