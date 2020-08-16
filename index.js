@@ -22,6 +22,9 @@ const ec2Params = {
         config.ec2.securityGroupName
     ], 
     UserData: '',
+    IamInstanceProfile: {
+        Arn: config.ec2.iAmInstanceProfileArn
+    },        
     TagSpecifications: [
         {
             ResourceType: "instance", 
@@ -106,11 +109,12 @@ subscriber.notifications.on('new_order', payload => {
 analysisQueue.process(async job => {
     var userData= `#!/bin/bash
     echo "Hello World"
-    touch /home/ubuntu/rapps/tripgen/analysis_id
-    echo "${job.data.a_id}" >> /home/ubuntu/rapps/tripgen/analysis_id
-    cd /home/ubuntu/rapps/tripgen 
+    touch /home/test/rapps/tripgen/analysis_id
+    echo "${job.data.a_id}" >> /home/test/rapps/tripgen/analysis_id
+    su - test &
+    cd /home/test/rapps/tripgen 
     pwd 
-    export R_LIBS_USER=/home/ubuntu/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
+    export R_LIBS_USER=/home/test/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
     /usr/bin/Rscript --verbose runner.R
     `;
     

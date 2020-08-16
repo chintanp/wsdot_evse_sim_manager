@@ -31,7 +31,9 @@ config = {
     ec2: {
         securityGroupName: process.env.EC2_SECURITY_GROUPNAME, 
         keyPairName: process.env.EC2_KEYPAIR_NAME, 
-        rAmiId: process.env.EC_R_AMI_ID
+        rAmiId: process.env.EC_R_AMI_ID, 
+        iAmInstanceProfileArn: process.env.IAM_INSTANCE_PROFILE_ARN, 
+        iAmInstanceProfileName: process.env.IAM_INSTANCE_PROFILE_NAME
     }
 }
 
