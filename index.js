@@ -13,32 +13,32 @@ AWS.config.update({ region: 'us-west-2' });
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 
 const ec2Params = {
-    ImageId: config.ec2.rAmiId, 
-    InstanceType: 't2.small', 
-    KeyName: config.ec2.keyPairName, 
-    MinCount: 1, 
-    MaxCount: 1, 
+    ImageId: config.ec2.rAmiId,
+    InstanceType: 't2.small',
+    KeyName: config.ec2.keyPairName,
+    MinCount: 1,
+    MaxCount: 1,
     SecurityGroupIds: [
         config.ec2.securityGroupName
-    ], 
+    ],
     UserData: '',
     IamInstanceProfile: {
         Arn: config.ec2.iAmInstanceProfileArn
-    },        
+    },
     TagSpecifications: [
         {
-            ResourceType: "instance", 
+            ResourceType: "instance",
             Tags: [
                 {
-                    Key: "Name", 
+                    Key: "Name",
                     Value: "cp84_evi-dss"
-                }, 
+                },
                 {
-                    Key: "Project", 
+                    Key: "Project",
                     Value: "cp84"
-                }, 
+                },
                 {
-                    Key: "End_date", 
+                    Key: "End_date",
                     Value: "06-30-2021"
                 }
             ]
@@ -60,11 +60,20 @@ const pgconfig = {
 }
 
 // Accepts the same connection config object that the "pg" package would take
-const subscriber = createSubscriber(pgconfig);
+const new_order_subscriber = createSubscriber(pgconfig);
 
 (async () => {
-    await subscriber.connect();
-    await subscriber.listenTo('new_order');
+    await new_order_subscriber.connect();
+    await new_order_subscriber.listenTo('new_order');
+})();
+
+
+// Accepts the same connection config object that the "pg" package would take
+const tripgen_subscriber = createSubscriber(pgconfig);
+
+(async () => {
+    await tripgen_subscriber.connect();
+    await tripgen_subscriber.listenTo('trips_generated');
 })();
 
 const rscript_update_dc = path.resolve("wsdot_evse_update_states/R", "runner.R");
@@ -72,26 +81,27 @@ const rscript_update_dc = path.resolve("wsdot_evse_update_states/R", "runner.R")
 app.use('/admin/queues', UI);
 
 // 1. Initiating the Queue
-const analysisQueue = new Queue('sendMail', {
+const tripgenQueue = new Queue('trip_generation', {
     redis: {
         host: config.redis.host,
         port: config.redis.port
     }
 });
 
-setQueues([analysisQueue]);
+setQueues([tripgenQueue]);
 
-const data = {
-    a_id: '', 
-    instance_data: ''
+const tripgen_data = {
+    a_id: '',
+    instance_data: '',
+    ec2_params: ''
 };
 
-const analysisQueueOptions = {
+const tripgenQueueOptions = {
     delay: 0,
     attempts: 1
 };
 
-subscriber.notifications.on('new_order', payload => {
+new_order_subscriber.notifications.on('new_order', payload => {
     console.log(`${JSON.stringify(payload)}`);
 
     const userid = payload.user_id;
@@ -99,15 +109,15 @@ subscriber.notifications.on('new_order', payload => {
     const status = payload.status;
     const a_id = payload.analysis_id;
 
-    data.a_id = a_id;
-    console.log(data);
+    tripgen_data.a_id = a_id;
+    console.log(tripgen_data);
     // 2. Adding a Job to the Queue
-    analysisQueue.add(data, analysisQueueOptions);
+    tripgenQueue.add(tripgen_data, tripgenQueueOptions);
 });
 
 // 3. Consumer 
-analysisQueue.process(async job => {
-    var userData= `#!/bin/bash
+tripgenQueue.process(async job => {
+    var userData = `#!/bin/bash
     echo "Hello World"
     touch /home/test/rapps/tripgen/analysis_id
     echo "${job.data.a_id}" >> /home/test/rapps/tripgen/analysis_id
@@ -117,41 +127,83 @@ analysisQueue.process(async job => {
     export R_LIBS_USER=/home/test/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
     /usr/bin/Rscript --verbose runner.R
     `;
-    
+
     console.log(userData);
-    
+
     // create a buffer
     const userDataBuff = Buffer.from(userData, 'utf-8');
-    
+
     // encode buffer as Base64
     const userDataEncoded = userDataBuff.toString('base64');
     ec2Params.UserData = userDataEncoded;
 
-    ec2.runInstances(ec2Params, function(err, data) {
-        if(err) {
+
+
+    // tripgen_data.ec2_params = ec2Params.InstanceType;
+
+    ec2.runInstances(ec2Params, async function (err, data) {
+        if (err) {
             console.log(err, err.stack);
         } else {
             console.log(data);
-            job.data.instance_data = data;
+            tripgen_data.a_id = job.data.a_id
+            tripgen_data.instance_data = data
+            const result = await job.update(tripgen_data);
         }
     });
     // return await callR(rscript_update_dc, job.data.a_id);
 });
 
 // 4.1 Completed Event
-analysisQueue.on('completed', job => {
+tripgenQueue.on('completed', job => {
     console.log(`Job with id ${job.id} has been completed`);
 });
 
-analysisQueue.on('error', (error) => {
+tripgenQueue.on('error', (error) => {
     // An error occured.
     console.log(`There has been an error: ${error}`);
 });
 
 // 4.2 Failed Event
-analysisQueue.on('failed', (job, err) => {
+tripgenQueue.on('failed', (job, err) => {
     console.log(`Job with id ${job.id} has failed with error: ${err}`);
 });
+
+
+tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
+    console.log(`${JSON.stringify(payload)}`);
+
+    const userid = payload.user_id;
+    const simdatetime = payload.sim_date_time;
+    const status = payload.status;
+    const a_id = payload.analysis_id;
+
+    const completed_jobs = await tripgenQueue.getJobs(['completed']);
+
+    const instanceId = findInstanceId(a_id, completed_jobs)
+
+    var params = {
+        InstanceIds: [
+            instanceId
+        ]
+    };
+    ec2.terminateInstances(params, function (err, data) {
+        if (err) console.log(err, err.stack); // an error occurred
+        else {
+            console.log("Instance terminated: " + instanceId);
+            console.log(data);
+        }          // successful response
+    });
+
+});
+
+function findInstanceId(a_id, jobs) {
+    for (var i = 0; i < jobs.length; i++) {
+        if (jobs[i].data.a_id === a_id) {
+            return jobs[i].data.instance_data.Instances[0].InstanceId;
+        }
+    }
+}
 
 app.get('/', (req, res) => {
     res.send('Hello World!')
