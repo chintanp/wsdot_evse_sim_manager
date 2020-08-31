@@ -12,7 +12,7 @@ const config = require('./config.js');
 AWS.config.update({ region: 'us-west-2' });
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 
-const ec2Params = {
+const tripgenEC2Params = {
     ImageId: config.ec2.rAmiId,
     InstanceType: 't2.small',
     KeyName: config.ec2.keyPairName,
@@ -31,7 +31,7 @@ const ec2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_evi-dss"
+                    Value: "cp84_evi_dss"
                 },
                 {
                     Key: "Project",
@@ -46,7 +46,41 @@ const ec2Params = {
     ]
 };
 
+const eviabmEC2Params = {
+    ImageId: config.ec2.gamaAmiId,
+    InstanceType: 't2.large',
+    KeyName: config.ec2.keyPairName,
+    MinCount: 1,
+    MaxCount: 1,
+    SecurityGroupIds: [
+        config.ec2.securityGroupName
+    ],
+    UserData: '',
+    IamInstanceProfile: {
+        Arn: config.ec2.iAmInstanceProfileArn
+    },
+    TagSpecifications: [
+        {
+            ResourceType: "instance",
+            Tags: [
+                {
+                    Key: "Name",
+                    Value: "cp84_evi_dss"
+                },
+                {
+                    Key: "Project",
+                    Value: "cp84"
+                },
+                {
+                    Key: "End_date",
+                    Value: "06-30-2021"
+                }
+            ]
+        }
+    ]
+};
 const rEC2InstanceData = '';
+const gamaEC2InstanceData = '';
 // console.log(JSON.stringify(config));
 
 const pgconfig = {
@@ -59,7 +93,7 @@ const pgconfig = {
     idleTimeoutMillis: config.db.idleTimeoutMillis
 }
 
-// Accepts the same connection config object that the "pg" package would take
+// this subscribers listen for new analysis requests
 const new_order_subscriber = createSubscriber(pgconfig);
 
 (async () => {
@@ -68,7 +102,7 @@ const new_order_subscriber = createSubscriber(pgconfig);
 })();
 
 
-// Accepts the same connection config object that the "pg" package would take
+// This subscriber listens for trips generated notification, 
 const tripgen_subscriber = createSubscriber(pgconfig);
 
 (async () => {
@@ -76,7 +110,13 @@ const tripgen_subscriber = createSubscriber(pgconfig);
     await tripgen_subscriber.listenTo('trips_generated');
 })();
 
-const rscript_update_dc = path.resolve("wsdot_evse_update_states/R", "runner.R");
+// This subscriber listens for GAMA analysis solution 
+const eviabm_subscriber = createSubscriber(pgconfig);
+
+(async () => {
+    await eviabm_subscriber.connect();
+    await eviabm_subscriber.listenTo('solved');
+})();
 
 app.use('/admin/queues', UI);
 
@@ -88,7 +128,14 @@ const tripgenQueue = new Queue('trip_generation', {
     }
 });
 
-setQueues([tripgenQueue]);
+const eviabmQueue = new Queue('eviabm', {
+    redis: {
+        host: config.redis.host,
+        port: config.redis.port
+    }
+});
+
+setQueues([tripgenQueue, eviabmQueue]);
 
 const tripgen_data = {
     a_id: '',
@@ -97,6 +144,17 @@ const tripgen_data = {
 };
 
 const tripgenQueueOptions = {
+    delay: 0,
+    attempts: 1
+};
+
+const eviabm_data = {
+    a_id: '',
+    instance_data: '',
+    ec2_params: ''
+};
+
+const eviabmQueueOptions = {
     delay: 0,
     attempts: 1
 };
@@ -135,13 +193,13 @@ tripgenQueue.process(async job => {
 
     // encode buffer as Base64
     const userDataEncoded = userDataBuff.toString('base64');
-    ec2Params.UserData = userDataEncoded;
+    tripgenEC2Params.UserData = userDataEncoded;
 
 
 
     // tripgen_data.ec2_params = ec2Params.InstanceType;
 
-    ec2.runInstances(ec2Params, async function (err, data) {
+    ec2.runInstances(tripgenEC2Params, async function (err, data) {
         if (err) {
             console.log(err, err.stack);
         } else {
@@ -151,22 +209,22 @@ tripgenQueue.process(async job => {
             const result = await job.update(tripgen_data);
         }
     });
-    // return await callR(rscript_update_dc, job.data.a_id);
+    
 });
 
 // 4.1 Completed Event
 tripgenQueue.on('completed', job => {
-    console.log(`Job with id ${job.id} has been completed`);
+    console.log(`Tripgen job with id ${job.id} has been completed`);
 });
 
 tripgenQueue.on('error', (error) => {
     // An error occured.
-    console.log(`There has been an error: ${error}`);
+    console.log(`Tripgen job has an error: ${error}`);
 });
 
 // 4.2 Failed Event
 tripgenQueue.on('failed', (job, err) => {
-    console.log(`Job with id ${job.id} has failed with error: ${err}`);
+    console.log(`Tripgen job with id ${job.id} has failed with error: ${err}`);
 });
 
 
@@ -195,7 +253,90 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
         }          // successful response
     });
 
+    // Add a job in the EVIABM queue now
+    eviabm_data.a_id = a_id;
+    console.log(eviabm_data);
+    // 2. Adding a Job to the Queue
+    eviabmQueue.add(eviabm_data, eviabmQueueOptions);
+
 });
+
+eviabmQueue.process(async job => {
+    var userData = `#!/bin/bash
+    echo "Hello World"
+    touch /home/test/wsdot_ev/evi-abm/analysis_id
+    echo "${job.data.a_id}" >> /home/test/wsdot_ev/evi-abm/analysis_id
+    su - test &
+    cd /home/test/headless 
+    pwd 
+    ./runner.sh
+    `;
+
+    console.log(userData);
+
+    // create a buffer
+    const userDataBuff = Buffer.from(userData, 'utf-8');
+
+    // encode buffer as Base64
+    const userDataEncoded = userDataBuff.toString('base64');
+    eviabmEC2Params.UserData = userDataEncoded;
+
+    ec2.runInstances(eviabmEC2Params, async function (err, data) {
+        if (err) {
+            console.log(err, err.stack);
+        } else {
+            console.log(data);
+            eviabm_data.a_id = job.data.a_id
+            eviabm_data.instance_data = data
+            const result = await job.update(eviabm_data);
+        }
+    });
+    
+});
+
+eviabm_subscriber.notifications.on('solved', async (payload) => {
+    console.log(`${JSON.stringify(payload)}`);
+
+    const userid = payload.user_id;
+    const simdatetime = payload.sim_date_time;
+    const status = payload.status;
+    const a_id = payload.analysis_id;
+
+    const completed_jobs = await eviabmQueue.getJobs(['completed']);
+
+    const instanceId = findInstanceId(a_id, completed_jobs)
+
+    var params = {
+        InstanceIds: [
+            instanceId
+        ]
+    };
+    ec2.terminateInstances(params, function (err, data) {
+        if (err) console.log(err, err.stack); // an error occurred
+        else {
+            console.log("Instance terminated: " + instanceId);
+            console.log(data);
+        }          // successful response
+    });
+    
+    // send mail that all is done
+
+});
+// 4.1 Completed Event
+eviabmQueue.on('completed', job => {
+    console.log(`EVIABM Job with id ${job.id} has been completed`);
+});
+
+eviabmQueue.on('error', (error) => {
+    // An error occured.
+    console.log(`EVIABM job has an error: ${error}`);
+});
+
+// 4.2 Failed Event
+eviabmQueue.on('failed', (job, err) => {
+    console.log(`EVIABM Job with id ${job.id} has failed with error: ${err}`);
+});
+
 
 function findInstanceId(a_id, jobs) {
     for (var i = 0; i < jobs.length; i++) {
