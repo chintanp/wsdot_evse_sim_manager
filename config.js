@@ -22,8 +22,8 @@ config = {
     }, 
     email: {
         transport: SES, 
-        from: '', 
-        subject: ''
+        from: 'admin@evidss.org', 
+        subject: 'EVI-DSS: Simulation solved'
     }, 
     app: {
         port: process.env.SIMMAN_PORT || 3000
@@ -33,6 +33,9 @@ config = {
         keyPairName: process.env.EC2_KEYPAIR_NAME, 
         rAmiId: process.env.EC_R_AMI_ID, 
         iAmInstanceProfileArn: process.env.IAM_INSTANCE_PROFILE_ARN
+    }, 
+    resview: {
+        host: process.env.RESVIEW_HOST
     }
 }
 

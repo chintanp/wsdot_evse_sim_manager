@@ -8,6 +8,7 @@ const path = require('path');
 const spawn = require("child_process").spawn;
 const logger = require('./utils/logger');
 const config = require('./config.js');
+const emailController = require('./controllers/controller-email');
 
 AWS.config.update({ region: 'us-west-2' });
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
@@ -102,7 +103,7 @@ const tripgenQueueOptions = {
 };
 
 new_order_subscriber.notifications.on('new_order', payload => {
-    console.log(`${JSON.stringify(payload)}`);
+    logger.info(`new_order payload ${JSON.stringify(payload)}`);
 
     const userid = payload.user_id;
     const simdatetime = payload.sim_date_time;
@@ -110,7 +111,7 @@ new_order_subscriber.notifications.on('new_order', payload => {
     const a_id = payload.analysis_id;
 
     tripgen_data.a_id = a_id;
-    console.log(tripgen_data);
+    logger.info(tripgen_data);
     // 2. Adding a Job to the Queue
     tripgenQueue.add(tripgen_data, tripgenQueueOptions);
 });
@@ -128,7 +129,7 @@ tripgenQueue.process(async job => {
     /usr/bin/Rscript --verbose runner.R
     `;
 
-    console.log(userData);
+    logger.info(userData);
 
     // create a buffer
     const userDataBuff = Buffer.from(userData, 'utf-8');
@@ -143,9 +144,9 @@ tripgenQueue.process(async job => {
 
     ec2.runInstances(ec2Params, async function (err, data) {
         if (err) {
-            console.log(err, err.stack);
+            logger.error(err, err.stack);
         } else {
-            console.log(data);
+            logger.info(data);
             tripgen_data.a_id = job.data.a_id
             tripgen_data.instance_data = data
             const result = await job.update(tripgen_data);
@@ -156,22 +157,22 @@ tripgenQueue.process(async job => {
 
 // 4.1 Completed Event
 tripgenQueue.on('completed', job => {
-    console.log(`Job with id ${job.id} has been completed`);
+    logger.info(`tripgenQueue Job with id ${job.id} has been completed`);
 });
 
 tripgenQueue.on('error', (error) => {
     // An error occured.
-    console.log(`There has been an error: ${error}`);
+    logger.error(`There has been an error in tripgenQueue: ${error}`);
 });
 
 // 4.2 Failed Event
 tripgenQueue.on('failed', (job, err) => {
-    console.log(`Job with id ${job.id} has failed with error: ${err}`);
+    logger.error(`Job with id ${job.id} has failed with error: ${err}`);
 });
 
 
 tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
-    console.log(`${JSON.stringify(payload)}`);
+    logger.info(`trips_generated payload: ${JSON.stringify(payload)}`);
 
     const userid = payload.user_id;
     const simdatetime = payload.sim_date_time;
@@ -188,10 +189,10 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
         ]
     };
     ec2.terminateInstances(params, function (err, data) {
-        if (err) console.log(err, err.stack); // an error occurred
+        if (err) logger.error(err, err.stack); // an error occurred
         else {
-            console.log("Instance terminated: " + instanceId);
-            console.log(data);
+            logger.info("Instance terminated: " + instanceId);
+            // console.log(data);
         }          // successful response
     });
 
@@ -210,5 +211,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(config.app.port, () => {
-    console.log(`Simulation manager listening at http://localhost:${config.app.port}`)
+    logger.info(`Simulation manager listening at http://localhost:${config.app.port}`)
 })
