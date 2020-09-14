@@ -19,21 +19,22 @@ config = {
         port: parseInt(process.env.MAIN_PORT) || 5432,
         max: parseInt(process.env.DB_MAX_CLIENTS) || 20,
         idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT_MS) || 30000
-    }, 
+    },
     email: {
-        transport: SES, 
-        from: 'admin@evidss.org', 
+        transport: SES,
+        from: 'admin@evidss.org',
         subject: 'EVI-DSS: Simulation solved'
-    }, 
+    },
     app: {
         port: process.env.SIMMAN_PORT || 3000
-    }, 
+    },
     ec2: {
-        securityGroupName: process.env.EC2_SECURITY_GROUPNAME, 
-        keyPairName: process.env.EC2_KEYPAIR_NAME, 
-        rAmiId: process.env.EC_R_AMI_ID, 
-        iAmInstanceProfileArn: process.env.IAM_INSTANCE_PROFILE_ARN
-    }, 
+        securityGroupName: process.env.EC2_SECURITY_GROUPNAME,
+        keyPairName: process.env.EC2_KEYPAIR_NAME,
+        rAmiId: process.env.EC_R_AMI_ID,
+        iAmInstanceProfileArn: process.env.IAM_INSTANCE_PROFILE_ARN,
+        gamaAmiId: process.env.EC_GAMA_AMI_ID
+    },
     resview: {
         host: process.env.RESVIEW_HOST
     }
