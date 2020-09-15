@@ -174,15 +174,9 @@ new_order_subscriber.notifications.on('new_order', payload => {
     logger.info(tripgen_data);
     // 2. Adding a Job to the Queue
 
-    // send email to the company
-    ids = emailController.sendEmail(resview_URL, a_id, simdatetime, userid)
-        .then(res => {
-
-        });
-
     logger.info(ids);
 
-    // tripgenQueue.add(tripgen_data, tripgenQueueOptions);
+    tripgenQueue.add(tripgen_data, tripgenQueueOptions);
 });
 
 // 3. Consumer 
@@ -206,8 +200,6 @@ tripgenQueue.process(async job => {
     // encode buffer as Base64
     const userDataEncoded = userDataBuff.toString('base64');
     tripgenEC2Params.UserData = userDataEncoded;
-
-
 
     // tripgen_data.ec2_params = ec2Params.InstanceType;
 
@@ -327,6 +319,11 @@ eviabm_subscriber.notifications.on('solved', async (payload) => {
         else {
             logger.info("Instance terminated: " + instanceId);
 
+            // send email to the company
+            ids = emailController.sendEmail(resview_URL, a_id, simdatetime, userid)
+                .then(res => {
+
+                });
             // console.log(data);
         }          // successful response
     });
