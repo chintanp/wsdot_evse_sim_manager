@@ -12,8 +12,8 @@ module.exports.sendEmail = async (resview_url, a_id, sim_date_time, userid) => {
         let email_result = await emailModel.getEmail(userid);
         email_result_arr = email_result.rows;
         attachment = ""
-        logger.info(`Email will be sent to: ${email_result_arr[0]}`);
-        var send_email_result = await emailModel.sendEmail(email_result_arr[0], body, attachment);
+        logger.info(`Email will be sent to: ${email_result_arr[0].email_id}`);
+        var send_email_result = await emailModel.sendEmail(email_result_arr[0].email_id, body, attachment);
         return send_email_result;
     } catch (error) {
         logger.error(`sendEmail error in controller: ${error.message}`);

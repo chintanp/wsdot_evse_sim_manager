@@ -288,7 +288,6 @@ eviabmQueue.process(async job => {
 
     // create a buffer
     const userDataBuff = Buffer.from(userData, 'utf-8');
-
     // encode buffer as Base64
     const userDataEncoded = userDataBuff.toString('base64');
     eviabmEC2Params.UserData = userDataEncoded;
