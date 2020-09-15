@@ -36,7 +36,7 @@ module.exports.sendEmail = async (email, body, attachment) => {
         // set the mailOptions
         mailOptions.to = email;
         mailOptions.html = body;
-        mailOptions.attachments[0].path = attachment
+        // mailOptions.attachments[0].path = attachment
         logger.debug(`sendEmail() email: ${email} | body: ${body} | attachment: ${attachment}`);
         let result = await transporter.sendMail(mailOptions);
         return result;
