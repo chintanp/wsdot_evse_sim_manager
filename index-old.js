@@ -233,9 +233,6 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
     logger.info(`trips_generated payload: ${JSON.stringify(payload)}`);
 
     const userid = payload.user_id;
-    const simdatetime = payload.sim_date_time;
-    const status = payload.status;
-    const a_id = payload.analysis_id;
 
     const completed_jobs = await tripgenQueue.getJobs(['completed']);
 
