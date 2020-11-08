@@ -34,7 +34,7 @@ const tripgenEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_evi_dss"
+                    Value: "cp84_evi_dss_tripgen"
                 },
                 {
                     Key: "Project",
@@ -68,7 +68,7 @@ const eviabmEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_evi_dss"
+                    Value: "cp84_evi_dss_eviabm"
                 },
                 {
                     Key: "Project",
