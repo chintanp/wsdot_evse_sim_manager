@@ -268,6 +268,7 @@ eviabmQueue.process(async job => {
     touch /home/test/wsdot_ev/evi-abm/analysis_id
     echo "${job.data.a_id}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
+    cd /home/test/wsdot_ev/evi-abm && git pull origin master
     cd /home/test/headless 
     pwd 
     ./runner.sh
