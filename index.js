@@ -265,7 +265,7 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
 eviabmQueue.process(async job => {
     var userData = `#!/bin/bash
     echo "Hello World"
-    rm /opt/aws/amazon-cloudwatch-agent/bin/config.json
+    rm /home/test/wsdot_ev/evi-abm/analysis_id
     touch /home/test/wsdot_ev/evi-abm/analysis_id
     echo "${job.data.a_id}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
