@@ -9,6 +9,7 @@ const spawn = require("child_process").spawn;
 const logger = require('./utils/logger');
 const config = require('./config.js');
 const emailController = require('./controllers/controller-email');
+const paramsController = require('./controllers/controller-params');
 
 AWS.config.update({ region: 'us-west-2' });
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
@@ -263,11 +264,13 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
 });
 
 eviabmQueue.process(async job => {
-    var userData = `#!/bin/bash
+    var analysis_id = job.data.a_id;
+    var seed = paramsController.getSeed(analysis_id).then((res) => {
+        var userData = `#!/bin/bash
     echo "Hello World"
     rm /home/test/wsdot_ev/evi-abm/analysis_id
     touch /home/test/wsdot_ev/evi-abm/analysis_id
-    echo "${job.data.a_id}" >> /home/test/wsdot_ev/evi-abm/analysis_id
+    echo "${analysis_id}\n${seed}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
     cd /home/test/wsdot_ev/evi-abm && git pull origin master
     cd /home/test/headless 
@@ -275,23 +278,25 @@ eviabmQueue.process(async job => {
     ./runner.sh
     `;
 
-    logger.info(userData);
+        logger.info(userData);
 
-    // create a buffer
-    const userDataBuff = Buffer.from(userData, 'utf-8');
-    // encode buffer as Base64
-    const userDataEncoded = userDataBuff.toString('base64');
-    eviabmEC2Params.UserData = userDataEncoded;
+        // create a buffer
+        const userDataBuff = Buffer.from(userData, 'utf-8');
+        // encode buffer as Base64
+        const userDataEncoded = userDataBuff.toString('base64');
+        eviabmEC2Params.UserData = userDataEncoded;
 
-    ec2.runInstances(eviabmEC2Params, async function (err, data) {
-        if (err) {
-            logger.error(err, err.stack);
-        } else {
-            logger.info(JSON.stringify(data));
-            eviabm_data.a_id = job.data.a_id
-            eviabm_data.instance_data = data
-            const result = await job.update(eviabm_data);
-        }
+        ec2.runInstances(eviabmEC2Params, async function (err, data) {
+            if (err) {
+                logger.error(err, err.stack);
+            } else {
+                logger.info(JSON.stringify(data));
+                eviabm_data.a_id = job.data.a_id
+                eviabm_data.instance_data = data
+                const result = await job.update(eviabm_data);
+            }
+        });
+
     });
 
 });
