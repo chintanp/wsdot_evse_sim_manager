@@ -35,7 +35,7 @@ const tripgenEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_chargeval_tripgen_prod"
+                    Value: "cp84_chargeval_tripgen_dev"
                 },
                 {
                     Key: "Project",
@@ -69,7 +69,7 @@ const eviabmEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_chargeval_eviabm_prod"
+                    Value: "cp84_chargeval_eviabm_dev"
                 },
                 {
                     Key: "Project",
