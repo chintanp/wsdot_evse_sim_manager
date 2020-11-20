@@ -35,7 +35,7 @@ const tripgenEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_evi_dss_tripgen"
+                    Value: "cp84_chargeval_tripgen_prod"
                 },
                 {
                     Key: "Project",
@@ -69,7 +69,7 @@ const eviabmEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_evi_dss_eviabm"
+                    Value: "cp84_chargeval_eviabm_prod"
                 },
                 {
                     Key: "Project",
@@ -164,7 +164,7 @@ const eviabmQueueOptions = {
 };
 
 new_order_subscriber.notifications.on('new_order', payload => {
-    logger.info(`new_order payload ${JSON.stringify(payload)}`);
+    logger.info(`new_order payload: ${JSON.stringify(payload)}`);
 
     const userid = payload.user_id;
     const simdatetime = payload.sim_date_time;
@@ -191,7 +191,7 @@ tripgenQueue.process(async job => {
     /usr/bin/Rscript --verbose runner.R
     `;
 
-    logger.info(userData);
+    logger.info("tripgen userdata: " + userData);
 
     // create a buffer
     const userDataBuff = Buffer.from(userData, 'utf-8');
@@ -265,12 +265,15 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
 
 eviabmQueue.process(async job => {
     var analysis_id = job.data.a_id;
-    var seed = paramsController.getSeed(analysis_id).then((res) => {
+    paramsController.getSeed(analysis_id).then((res) => {
+        
+        logger.info("seed: " + res);
+        
         var userData = `#!/bin/bash
     echo "Hello World"
     rm /home/test/wsdot_ev/evi-abm/analysis_id
     touch /home/test/wsdot_ev/evi-abm/analysis_id
-    echo "${analysis_id}\n${seed}" >> /home/test/wsdot_ev/evi-abm/analysis_id
+    echo "${analysis_id}\n${res}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
     cd /home/test/wsdot_ev/evi-abm && git pull origin master
     cd /home/test/headless 
@@ -278,7 +281,7 @@ eviabmQueue.process(async job => {
     ./runner.sh
     `;
 
-        logger.info(userData);
+        logger.info("eviabm userdata: " + userData);
 
         // create a buffer
         const userDataBuff = Buffer.from(userData, 'utf-8');
