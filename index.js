@@ -266,14 +266,14 @@ tripgen_subscriber.notifications.on('trips_generated', async (payload) => {
 eviabmQueue.process(async job => {
     var analysis_id = job.data.a_id;
     paramsController.getSeed(analysis_id).then((res) => {
-        
-        logger.info("seed: " + res);
+        seed = res[0].param_value
+        logger.info("seed: " + seed);
         
         var userData = `#!/bin/bash
     echo "Hello World"
     rm /home/test/wsdot_ev/evi-abm/analysis_id
     touch /home/test/wsdot_ev/evi-abm/analysis_id
-    echo "${analysis_id}\n${res}" >> /home/test/wsdot_ev/evi-abm/analysis_id
+    echo "${analysis_id}\n${seed}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
     cd /home/test/wsdot_ev/evi-abm && git pull origin master
     cd /home/test/headless 
