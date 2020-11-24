@@ -8,7 +8,6 @@ const logger = require('./logger');
 const mailConfig = {
     from: config.email.from, 
     subject: config.email.subject,
-    attachmentName: config.email.attachmentName,
     transport: config.email.transport
 }
 
@@ -22,13 +21,6 @@ var mailOptions = {
     html: '',
     to: '',
     // bcc: Any BCC address you want here in an array,
-    attachments: [
-        {
-            filename: mailConfig.attachmentName,
-            path: '',
-            cid: 'uniq-mailtrap.png' 
-        }
-    ]
 };
 
 module.exports.sendEmail = async (email, body, attachment) => {

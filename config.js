@@ -22,8 +22,8 @@ config = {
     },
     email: {
         transport: SES,
-        from: 'admin@evidss.org',
-        subject: 'EVI-DSS: Simulation solved'
+        from: 'admin@' + process.env.EVIDSS_DOMAINNAME,
+        subject: process.env.COMPOSE_PROJECT_NAME + ': Simulation solved'
     },
     app: {
         port: process.env.SIMMAN_PORT || 3000
@@ -37,6 +37,10 @@ config = {
     },
     resview: {
         host: process.env.RESVIEW_HOST
+    }, 
+    deployment: {
+        tag: process.env.DEPLOYMENT_TAG, 
+        branch: process.env.DEPLOYMENT_BRANCH
     }
 }
 

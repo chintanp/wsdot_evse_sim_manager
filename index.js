@@ -35,7 +35,7 @@ const tripgenEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_chargeval_tripgen_dev"
+                    Value: "cp84_chargeval_tripgen_" + config.deployment.tag
                 },
                 {
                     Key: "Project",
@@ -69,7 +69,7 @@ const eviabmEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_chargeval_eviabm_dev"
+                    Value: "cp84_chargeval_eviabm_" + + config.deployment.tag
                 },
                 {
                     Key: "Project",
@@ -185,9 +185,10 @@ tripgenQueue.process(async job => {
     touch /home/test/rapps/tripgen/analysis_id
     echo "${job.data.a_id}" >> /home/test/rapps/tripgen/analysis_id
     su - test &
-    cd /home/test/rapps/tripgen 
+    cd /home/test/rapps/tripgen && git pull origin ${config.deployment.branch}
     pwd 
     export R_LIBS_USER=/home/test/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
+    R -e 'remotes::install_local(upgrade="never")'
     /usr/bin/Rscript --verbose runner.R
     `;
 
@@ -275,7 +276,7 @@ eviabmQueue.process(async job => {
     touch /home/test/wsdot_ev/evi-abm/analysis_id
     echo "${analysis_id}\n${seed}" >> /home/test/wsdot_ev/evi-abm/analysis_id
     su - test &
-    cd /home/test/wsdot_ev/evi-abm && git pull origin master
+    cd /home/test/wsdot_ev/evi-abm && git pull origin ${config.deployment.branch}
     cd /home/test/headless 
     pwd 
     ./runner.sh
