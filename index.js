@@ -16,6 +16,11 @@ const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 
 const resview_URL = config.resview.host;
 
+logger.info("Deployment tag: " + config.deployment.tag);
+logger.info("Deployment branch: " + config.deployment.tag);
+logger.info("Email from: " + config.email.from);
+logger.info("Port: " + config.app.port);
+
 const tripgenEC2Params = {
     ImageId: config.ec2.rAmiId,
     InstanceType: 't2.small',
@@ -188,7 +193,7 @@ tripgenQueue.process(async job => {
     cd /home/test/rapps/tripgen && git pull origin ${config.deployment.branch}
     pwd 
     export R_LIBS_USER=/home/test/R/x86_64-pc-linux-gnu-library/4.0 && R -e ".libPaths()"
-    R -e 'remotes::install_local(upgrade="never")'
+    R -e 'remotes::install_local(upgrade="never", force = TRUE)'
     /usr/bin/Rscript --verbose runner.R
     `;
 
