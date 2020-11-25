@@ -69,7 +69,7 @@ const eviabmEC2Params = {
             Tags: [
                 {
                     Key: "Name",
-                    Value: "cp84_chargeval_eviabm_" + + config.deployment.tag
+                    Value: "cp84_chargeval_eviabm_" + config.deployment.tag
                 },
                 {
                     Key: "Project",
