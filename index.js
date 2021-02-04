@@ -10,6 +10,7 @@ const logger = require('./utils/logger');
 const config = require('./config.js');
 const emailController = require('./controllers/controller-email');
 const paramsController = require('./controllers/controller-params');
+const analysisController = require('./controllers/controller-ar');
 
 AWS.config.update({ region: 'us-west-2' });
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
@@ -134,14 +135,21 @@ const tripgenQueue = new Queue('trip_generation', {
     redis: {
         host: config.redis.host,
         port: config.redis.port
-    }
+    }, 
+    limiter: {
+        max: 1000,
+        duration: 1000
+      }
 });
 
 const eviabmQueue = new Queue('eviabm', {
     redis: {
         host: config.redis.host,
         port: config.redis.port
-    }
+    }, limiter: {
+        max: 1000,
+        duration: 1000
+      }
 });
 
 setQueues([tripgenQueue, eviabmQueue]);
@@ -153,7 +161,7 @@ const tripgen_data = {
 };
 
 const tripgenQueueOptions = {
-    delay: 0,
+    delay: 2000,
     attempts: 1
 };
 
@@ -164,7 +172,7 @@ const eviabm_data = {
 };
 
 const eviabmQueueOptions = {
-    delay: 0,
+    delay: 2000,
     attempts: 1
 };
 
@@ -213,6 +221,12 @@ tripgenQueue.process(async job => {
             logger.error(err, err.stack);
         } else {
             logger.info(JSON.stringify(data));
+            logger.info('tripgen EC2 instnaceId:' + data['Instances'][0]['InstanceId']);
+
+            analysisController.setInstanceId('tripgen', job.data.a_id, data['Instances'][0]['InstanceId']).then((res) => {
+
+            });
+
             tripgen_data.a_id = job.data.a_id
             tripgen_data.instance_data = data
             const result = await job.update(tripgen_data);
@@ -274,7 +288,7 @@ eviabmQueue.process(async job => {
     paramsController.getSeed(analysis_id).then((res) => {
         seed = res[0].param_value
         logger.info("seed: " + seed);
-        
+
         var userData = `#!/bin/bash
     echo "Hello World"
     rm /home/test/wsdot_ev/evi-abm/analysis_id
@@ -300,6 +314,11 @@ eviabmQueue.process(async job => {
                 logger.error(err, err.stack);
             } else {
                 logger.info(JSON.stringify(data));
+
+                analysisController.setInstanceId('eviabm', job.data.a_id, data['Instances'][0]['InstanceId']).then((res) => {
+
+
+                });
                 eviabm_data.a_id = job.data.a_id
                 eviabm_data.instance_data = data
                 const result = await job.update(eviabm_data);
