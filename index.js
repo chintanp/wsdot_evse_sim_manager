@@ -195,6 +195,7 @@ new_order_subscriber.notifications.on('new_order', payload => {
 tripgenQueue.process(async job => {
     var userData = `#!/bin/bash
     echo "Hello World"
+    nohup /home/ubuntu/node_exporter-1.0.1.linux-amd64/node_exporter &
     touch /home/test/rapps/tripgen/analysis_id
     echo "${job.data.a_id}" >> /home/test/rapps/tripgen/analysis_id
     su - test &
@@ -222,8 +223,9 @@ tripgenQueue.process(async job => {
         } else {
             logger.info(JSON.stringify(data));
             logger.info('tripgen EC2 instnaceId:' + data['Instances'][0]['InstanceId']);
-
-            analysisController.setInstanceId('tripgen', job.data.a_id, data['Instances'][0]['InstanceId']).then((res) => {
+            const iid = data['Instances'][0]['InstanceId']
+            const ip = data['Instances'][0]['PrivateIpAddress']
+            analysisController.setInstanceSpecs('tripgen', job.data.a_id, iid, ip).then((res) => {
 
             });
 
@@ -291,6 +293,7 @@ eviabmQueue.process(async job => {
 
         var userData = `#!/bin/bash
     echo "Hello World"
+    nohup /home/ubuntu/node_exporter-1.0.1.linux-amd64/node_exporter &
     rm /home/test/wsdot_ev/evi-abm/analysis_id
     touch /home/test/wsdot_ev/evi-abm/analysis_id
     echo "${analysis_id}\n${seed}" >> /home/test/wsdot_ev/evi-abm/analysis_id
@@ -315,7 +318,10 @@ eviabmQueue.process(async job => {
             } else {
                 logger.info(JSON.stringify(data));
 
-                analysisController.setInstanceId('eviabm', job.data.a_id, data['Instances'][0]['InstanceId']).then((res) => {
+                const iide = data['Instances'][0]['InstanceId']
+                const ipe = data['Instances'][0]['PrivateIpAddress']
+
+                analysisController.setInstanceSpecs('eviabm', job.data.a_id, iide, ipe).then((res) => {
 
 
                 });
