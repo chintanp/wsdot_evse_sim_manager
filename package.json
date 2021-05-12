@@ -23,7 +23,7 @@
     "dockerode": "^3.2.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "nodemailer": "^6.4.11",
+    "nodemailer": "^6.4.16",
     "pg": "^8.3.0",
     "pg-listen": "^1.6.0",
     "winston": "^3.3.3",
